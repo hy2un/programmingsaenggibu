@@ -1,3 +1,4 @@
+
 """성분 사전: 성분 검색, 관련 제품, 의약품 용어, 출처 확인."""
 from urllib.parse import quote
 
@@ -11,6 +12,7 @@ from drug_data_tools import (
 
 st.markdown("""<style>
 .stApp {background:#fbfdfc;}
+[data-testid="stSidebar"] {background:#eef5f0 !important;}
 h1,h2,h3 {color:#193d34 !important;letter-spacing:-.025em;}
 .stTabs [data-baseweb="tab-list"] {
  gap:18px;border-bottom:1px solid #dcece3;
