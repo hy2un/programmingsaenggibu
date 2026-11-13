@@ -1,3 +1,4 @@
+
 """Gemini 건강정보 상담: 환자·의사 아바타로 수정"""
 
 import streamlit as st
@@ -11,6 +12,7 @@ st.markdown("""
 .stApp {
     background: #fbfdfc;
 }
+[data-testid="stSidebar"] {background:#eef5f0 !important;}
 
 h1, h2, h3 {
     color: #193d34 !important;
