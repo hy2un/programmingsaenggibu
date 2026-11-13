@@ -1,3 +1,4 @@
+
 """동물 건강: 직사각형 모양의 네모를 수정함"""
 from html import escape
 from pathlib import Path
@@ -13,6 +14,7 @@ st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {
     background: #fbfdfb !important;
 }
+[data-testid="stSidebar"] {background:#eef5f0 !important;}
 h1, h2, h3 { color: #193d34 !important; letter-spacing: -.02em; }
 
 /* 탭은 글자와 초록색 밑줄을 강조하고, 다른 UI의 둥근 모서리는 유지 */
