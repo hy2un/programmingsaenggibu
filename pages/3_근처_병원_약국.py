@@ -1,3 +1,4 @@
+
 """사람 병원·약국: 주소·건물명 검색, 반경 km, 작은 지도 핀."""
 from urllib.parse import quote
 
@@ -9,6 +10,7 @@ import streamlit as st
 # 페이지별 민트색 디자인
 st.markdown("""<style>
 .stApp {background:#fbfdfc;}
+[data-testid="stSidebar"] {background:#eef5f0 !important;}
 h1,h2,h3 {color:#193d34 !important;letter-spacing:-.025em;}
 .stTabs [data-baseweb="tab-list"] {
  gap:18px;border-bottom:1px solid #dcece3;
