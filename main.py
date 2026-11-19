@@ -1,34 +1,23 @@
-"""My MediCare 메인: 나의 약·성분 분석·질환과 건강 기록 페이지 연결."""
+"""My MediCare 메인: 건강 기록 요약, 약 검색·성분 분석·질환 관리."""
 
 from pathlib import Path
-
 import pandas as pd
 import streamlit as st
 
 from drug_data_tools import (
-    load_data,
-    load_condition_data,
-    search_drugs,
-    search_conditions,
-    get_selected_drugs,
-    find_duplicates,
+    load_data, load_condition_data,
+    search_drugs, search_conditions,
+    get_selected_drugs, find_duplicates,
     split_ingredients,
 )
 
 from medical_data import (
-    MedicalStoreError,
-    cloud_ready,
-    get_record,
-    init_record,
-    is_logged_in,
-    login_configured,
+    MedicalStoreError, cloud_ready,
+    get_record, init_record,
+    is_logged_in, login_configured,
     save_with_message,
 )
 
-
-# ==================================================
-# 1. 기본 설정
-# ==================================================
 
 st.set_page_config(
     page_title="My MediCare",
@@ -41,180 +30,129 @@ ROOT = Path(__file__).resolve().parent
 
 
 def update_home_record(field, new_values):
-    """메인에서 수정한 목록을 신규 페이지와 같은 저장소에 반영."""
-
     updated = get_record()
-
     updated[field] = list(
         dict.fromkeys(new_values)
     )
-
     if save_with_message(updated):
         st.rerun()
 
 
-# ==================================================
-# 2. 메인 화면
-# ==================================================
-
 def home_page():
 
-    # 홈 전용 디자인
-    # 기존 배경·카드·버튼 모습 유지
+    # ============================================
+    # 기존 홈 디자인 유지
+    # ============================================
 
-    st.markdown(
-        """
-        <style>
+    st.markdown("""<style>
+    .stApp,[data-testid="stAppViewContainer"] {
+      background:linear-gradient(
+        180deg,
+        #f2faf5 0%,
+        #f9fcfa 50%,
+        #ffffff 100%
+      ) !important;
+    }
+    [data-testid="stSidebar"] {
+      background:#eef5f0 !important;
+    }
+    h1,h2,h3 {
+      color:#193d34 !important;
+      letter-spacing:-.025em;
+    }
+    .st-key-home_hero {
+      background:#e8f6ed !important;
+      border:1px solid #d0e9d9 !important;
+      border-radius:22px !important;
+      padding:24px 28px !important;
+      margin-bottom:20px;
+      box-shadow:0 3px 12px rgba(29,91,60,.035);
+    }
+    .st-key-home_hero h1 {
+      color:#202f38 !important;
+      font-weight:800 !important;
+    }
+    .st-key-home_hero h3 {
+      color:#243c34 !important;
+    }
+    .st-key-home_hero img {
+      max-height:300px;
+      object-fit:contain;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+      gap:18px;
+      border-bottom:1px solid #dcece3;
+    }
+    .stTabs [data-baseweb="tab"] {
+      color:#52665b !important;
+      font-weight:700;
+      padding:11px 5px 13px;
+    }
+    .stTabs [data-baseweb="tab"]:hover,
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+      color:#127c60 !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+      background:#127c60 !important;
+      height:3px !important;
+      border-radius:3px !important;
+    }
+    .stButton > button {
+      border-radius:14px !important;
+      border:1px solid #b8dcca !important;
+      background:#fff !important;
+      color:#12654f !important;
+      font-weight:700 !important;
+      min-height:42px;
+    }
+    .stButton > button:hover {
+      background:#e4f5ea !important;
+      border-color:#148067 !important;
+      color:#0b6249 !important;
+    }
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="stBaseButton-primary"],
+    .stFormSubmitButton > button[kind="primary"] {
+      background:#147f66 !important;
+      border:1px solid #147f66 !important;
+      color:#fff !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+      background:#0e6953 !important;
+      border-color:#0e6953 !important;
+    }
+    .stTextInput input,
+    div[data-baseweb="select"] > div {
+      border-radius:13px !important;
+      border-color:#cfe4d7 !important;
+      background:#fff !important;
+    }
+    .stTextInput input:focus {
+      border-color:#147f66 !important;
+    }
+    div[data-testid="stMetric"] {
+      background:#edf8f1;
+      border:1px solid #d6e9dc;
+      border-radius:17px;
+      padding:12px 16px;
+    }
+    div[data-testid="stDataFrame"] {
+      border-radius:15px;
+      overflow:hidden;
+    }
+    div[data-testid="stAlert"] {
+      border-radius:16px !important;
+    }
+    @media(max-width:700px) {
+      .st-key-home_hero {
+        padding:17px !important;
+      }
+    }
+    </style>""", unsafe_allow_html=True)
 
-        .stApp,
-        [data-testid="stAppViewContainer"] {
-            background: linear-gradient(
-                180deg,
-                #f2faf5 0%,
-                #f9fcfa 50%,
-                #ffffff 100%
-            ) !important;
-        }
-
-        [data-testid="stSidebar"] {
-            background: #eef5f0 !important;
-        }
-
-        h1, h2, h3 {
-            color: #193d34 !important;
-            letter-spacing: -0.025em;
-        }
-
-        /* 메인 배너 */
-
-        .st-key-home_hero {
-            background: #e8f6ed !important;
-            border: 1px solid #d0e9d9 !important;
-            border-radius: 22px !important;
-            padding: 24px 28px !important;
-            margin-bottom: 20px;
-            box-shadow: 0 3px 12px rgba(
-                29,91,60,0.035
-            );
-        }
-
-        .st-key-home_hero h1 {
-            color: #202f38 !important;
-            font-weight: 800 !important;
-        }
-
-        .st-key-home_hero h3 {
-            color: #243c34 !important;
-        }
-
-        .st-key-home_hero img {
-            max-height: 300px;
-            object-fit: contain;
-        }
-
-        /* 탭 디자인 */
-
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 18px;
-            border-bottom: 1px solid #dcece3;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            color: #52665b !important;
-            font-weight: 700 !important;
-            padding: 11px 5px 13px;
-        }
-
-        .stTabs [data-baseweb="tab"]:hover,
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            color: #127c60 !important;
-        }
-
-        .stTabs [data-baseweb="tab-highlight"] {
-            background-color: #127c60 !important;
-            height: 3px !important;
-            border-radius: 3px !important;
-        }
-
-        /* 버튼 디자인 */
-
-        .stButton > button {
-            border-radius: 14px !important;
-            border: 1px solid #b8dcca !important;
-            background: #ffffff !important;
-            color: #12654f !important;
-            font-weight: 700 !important;
-            min-height: 42px;
-        }
-
-        .stButton > button:hover {
-            background: #e4f5ea !important;
-            border-color: #148067 !important;
-            color: #0b6249 !important;
-        }
-
-        .stButton > button[kind="primary"],
-        .stButton > button[data-testid="stBaseButton-primary"],
-        .stFormSubmitButton > button[kind="primary"] {
-            background: #147f66 !important;
-            border: 1px solid #147f66 !important;
-            color: #ffffff !important;
-        }
-
-        .stButton > button[kind="primary"]:hover,
-        .stButton > button[data-testid="stBaseButton-primary"]:hover {
-            background: #0e6953 !important;
-            border-color: #0e6953 !important;
-            color: #ffffff !important;
-        }
-
-        /* 입력창 */
-
-        .stTextInput input,
-        div[data-baseweb="select"] > div {
-            border-radius: 13px !important;
-            border-color: #cfe4d7 !important;
-            background: #ffffff !important;
-        }
-
-        .stTextInput input:focus {
-            border-color: #147f66 !important;
-        }
-
-        /* 통계 카드 */
-
-        div[data-testid="stMetric"] {
-            background: #edf8f1;
-            border: 1px solid #d6e9dc;
-            border-radius: 17px;
-            padding: 12px 16px;
-        }
-
-        /* 표 및 알림 */
-
-        div[data-testid="stDataFrame"] {
-            border-radius: 15px;
-            overflow: hidden;
-        }
-
-        div[data-testid="stAlert"] {
-            border-radius: 16px !important;
-        }
-
-        @media(max-width:700px) {
-            .st-key-home_hero {
-                padding: 17px !important;
-            }
-        }
-
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ==================================================
+    # ============================================
     # 데이터 불러오기
-    # ==================================================
+    # ============================================
 
     try:
         drugs, _ = load_data()
@@ -222,105 +160,74 @@ def home_page():
         init_record()
 
     except (
-        OSError,
-        ValueError,
-        KeyError,
+        OSError, ValueError, KeyError,
         pd.errors.ParserError,
-    ) as error:
-
+    ) as exc:
         st.error(
-            f"CSV 파일을 확인해 주세요: {error}"
+            f"CSV 파일을 확인해 주세요: {exc}"
         )
         st.stop()
 
-    except MedicalStoreError as error:
-
-        st.error(
-            str(error) +
-            " 저장된 기록을 읽을 수 없어 화면을 중단했습니다."
-        )
+    except MedicalStoreError as exc:
+        st.error(str(exc))
         st.stop()
 
-    # ==================================================
-    # 3. 메인 배너
-    # ==================================================
+    # ============================================
+    # 메인 배너
+    # ============================================
 
     with st.container(key="home_hero"):
-
         left, right = st.columns(
             [1.25, 1],
             vertical_alignment="center",
         )
 
         with left:
-
             st.title("My MediCare")
-
             st.subheader(
                 "건강한 오늘을 함께해요"
             )
-
             st.caption(
                 "나의 약·성분·질병·증상을 "
                 "한곳에서 확인하세요."
             )
 
         with right:
-
             banner = ROOT / "hero_characters.png"
 
             if banner.is_file():
-
                 st.image(
                     str(banner),
                     use_container_width=True,
                 )
 
-    # ==================================================
-    # 4. 나의 건강 기록
-    # 이메일 표시 및 파란 안내 박스 제거
-    # ==================================================
+    # ============================================
+    # 나의 건강 기록 요약
+    # ============================================
 
     st.subheader("🩺 나의 건강 기록")
 
-    # Google 로그인 완료 시 이메일 표시
-    if is_logged_in():
+    # 화면에 이메일을 표시하지 않습니다.
+    # 파란 안내문도 제거했습니다.
 
-        user_email = st.user.get(
-            "email", ""
-        )
-
-        if user_email:
-
-            st.caption(
-                f"로그인 계정: {user_email}"
-            )
-
-    # 로그인하지 않은 경우에만 로그인 버튼
-    elif login_configured():
-
+    if login_configured() and not is_logged_in():
         if st.button(
             "Google 계정으로 로그인",
             key="home_login",
         ):
             st.login()
 
-    # 기존 파란색 st.info 안내문 제거
-
     record = get_record()
 
     a, b, c = st.columns(3)
-
     a.metric(
         "등록 약물",
         len(record["drugs"]),
     )
-
     b.metric(
         "질환·증상",
         len(record["conditions"]),
     )
-
     c.metric(
         "건강 변화 기록",
         len(record["timeline"]),
@@ -331,16 +238,11 @@ def home_page():
         type="primary",
         key="home_go_records",
     ):
-
         st.switch_page(
             "pages/0_나의_건강_기록.py"
         )
 
     st.divider()
-
-    # ==================================================
-    # 메인 탭
-    # ==================================================
 
     tab_drug, tab_compare, tab_disease = st.tabs([
         "💊 나의 약",
@@ -348,12 +250,11 @@ def home_page():
         "📋 나의 질병",
     ])
 
-    # ==================================================
-    # 5. 나의 약 관리
-    # ==================================================
+    # ============================================
+    # 나의 약 관리
+    # ============================================
 
     with tab_drug:
-
         st.subheader("나의 약 관리")
 
         keyword = st.text_input(
@@ -363,29 +264,19 @@ def home_page():
         )
 
         if keyword.strip():
-
             found = search_drugs(
-                drugs,
-                keyword,
+                drugs, keyword
             )
 
             if found.empty:
-
                 st.info(
                     "검색 결과가 없습니다. "
                     "다른 제품명이나 성분을 입력해 주세요."
                 )
-
             else:
-
                 st.dataframe(
                     found[
-                        [
-                            "제품명",
-                            "제조사",
-                            "카테고리",
-                            "성분",
-                        ]
+                        ["제품명", "제조사", "카테고리", "성분"]
                     ],
                     hide_index=True,
                     use_container_width=True,
@@ -402,42 +293,28 @@ def home_page():
                     type="primary",
                     key="home_add_drug_btn",
                 ):
-
                     if choice not in st.session_state.my_drugs:
-
                         update_home_record(
                             "drugs",
-                            st.session_state.my_drugs
-                            + [choice],
+                            st.session_state.my_drugs + [choice],
                         )
-
                     else:
-
                         st.info(
                             "이미 등록된 약입니다."
                         )
 
-        st.markdown(
-            "#### 현재 나의 약 목록"
-        )
+        st.markdown("#### 현재 나의 약 목록")
 
         if st.session_state.my_drugs:
-
             selected = get_selected_drugs(
                 drugs,
                 st.session_state.my_drugs,
             )
 
             if not selected.empty:
-
                 st.dataframe(
                     selected[
-                        [
-                            "제품명",
-                            "제조사",
-                            "카테고리",
-                            "성분",
-                        ]
+                        ["제품명", "제조사", "카테고리", "성분"]
                     ],
                     hide_index=True,
                     use_container_width=True,
@@ -450,7 +327,6 @@ def home_page():
             ]
 
             if unknown:
-
                 st.caption(
                     "직접 입력한 약물: "
                     + ", ".join(unknown)
@@ -468,7 +344,6 @@ def home_page():
                 "선택한 약 삭제",
                 key="home_remove_drug_btn",
             ):
-
                 update_home_record(
                     "drugs",
                     [
@@ -482,17 +357,10 @@ def home_page():
                 "전체 삭제",
                 key="home_clear_drugs_btn",
             ):
-
-                update_home_record(
-                    "drugs",
-                    [],
-                )
+                update_home_record("drugs", [])
 
         else:
-
-            st.info(
-                "추가된 약이 없습니다."
-            )
+            st.info("추가된 약이 없습니다.")
 
         st.caption(
             "이 목록은 '나의 건강 기록'과 연결됩니다. "
@@ -503,15 +371,12 @@ def home_page():
             )
         )
 
-    # ==================================================
-    # 6. 의약품 성분 비교
-    # ==================================================
+    # ============================================
+    # 성분 비교
+    # ============================================
 
     with tab_compare:
-
-        st.subheader(
-            "의약품 성분 비교"
-        )
+        st.subheader("의약품 성분 비교")
 
         names = st.multiselect(
             "비교할 의약품 (2~5개)",
@@ -526,16 +391,13 @@ def home_page():
         )
 
         if len(names) < 2:
-
             st.info(
                 "두 개 이상의 의약품을 선택해 주세요."
             )
 
         else:
-
             selected = get_selected_drugs(
-                drugs,
-                names,
+                drugs, names
             )
 
             duplicates, ingredient_map = (
@@ -543,54 +405,32 @@ def home_page():
             )
 
             a, b, c = st.columns(3)
-
-            a.metric(
-                "선택 제품",
-                len(names),
-            )
-
-            b.metric(
-                "고유 성분",
-                len(ingredient_map),
-            )
-
-            c.metric(
-                "중복 성분",
-                len(duplicates),
-            )
+            a.metric("선택 제품", len(names))
+            b.metric("고유 성분", len(ingredient_map))
+            c.metric("중복 성분", len(duplicates))
 
             if duplicates:
-
-                duplicate_rows = [
-                    {
-                        "중복 성분": ingredient,
-                        "포함 제품": ", ".join(products),
-                    }
-                    for ingredient, products
-                    in sorted(duplicates.items())
-                ]
-
                 st.dataframe(
-                    pd.DataFrame(
-                        duplicate_rows
-                    ),
+                    pd.DataFrame([
+                        {
+                            "중복 성분": ingredient,
+                            "포함 제품": ", ".join(products),
+                        }
+                        for ingredient, products
+                        in sorted(duplicates.items())
+                    ]),
                     hide_index=True,
                     use_container_width=True,
                 )
 
             else:
-
                 st.success(
                     "성분명 기준으로 중복이 없습니다."
                 )
 
-            # 제품별 성분을 집합으로 변환
-
             per_product = {
                 row["제품명"]: set(
-                    split_ingredients(
-                        row["성분"]
-                    )
+                    split_ingredients(row["성분"])
                 )
                 for _, row in selected.iterrows()
             }
@@ -602,27 +442,20 @@ def home_page():
 
             rows = []
 
-            for ingredient in sorted(
-                ingredient_map
-            ):
-
+            for ingredient in sorted(ingredient_map):
                 if (
                     only_duplicates
                     and ingredient not in duplicates
                 ):
                     continue
 
-                row = {
-                    "성분명": ingredient
-                }
+                row = {"성분명": ingredient}
 
                 for product in names:
-
                     row[product] = (
                         "✓"
                         if ingredient in per_product.get(
-                            product,
-                            set(),
+                            product, set()
                         )
                         else ""
                     )
@@ -632,9 +465,7 @@ def home_page():
             st.dataframe(
                 pd.DataFrame(
                     rows,
-                    columns=[
-                        "성분명"
-                    ] + names,
+                    columns=["성분명"] + names,
                 ),
                 hide_index=True,
                 use_container_width=True,
@@ -645,15 +476,12 @@ def home_page():
                 "병용 가능 여부는 의료진에게 확인하세요."
             )
 
-    # ==================================================
-    # 7. 나의 질병 관리
-    # ==================================================
+    # ============================================
+    # 나의 질병 관리
+    # ============================================
 
     with tab_disease:
-
-        st.subheader(
-            "나의 질병·증상"
-        )
+        st.subheader("나의 질병·증상")
 
         st.caption(
             f"총 {len(conditions)}개 질병·증상을 "
@@ -681,15 +509,13 @@ def home_page():
 
         matches = (
             search_conditions(
-                conditions,
-                keyword,
+                conditions, keyword
             )
             if keyword.strip()
             else conditions.copy()
         )
 
         if category != "전체 분류":
-
             matches = matches[
                 matches["분류"] == category
             ].copy()
@@ -700,19 +526,11 @@ def home_page():
         )
 
         if matches.empty:
-
-            st.info(
-                "검색 결과가 없습니다."
-            )
-
+            st.info("검색 결과가 없습니다.")
         else:
-
             st.dataframe(
                 matches[
-                    [
-                        "질병명",
-                        "분류",
-                    ]
+                    ["질병명", "분류"]
                 ],
                 hide_index=True,
                 use_container_width=True,
@@ -730,27 +548,20 @@ def home_page():
             type="primary",
             key="home_dis_add_btn",
         ):
-
             if not selected_names:
-
                 st.warning(
                     "추가할 질병·증상을 선택해 주세요."
                 )
-
             else:
-
                 update_home_record(
                     "conditions",
                     st.session_state.my_conditions
                     + selected_names,
                 )
 
-        st.markdown(
-            "#### 현재 나의 질병 목록"
-        )
+        st.markdown("#### 현재 나의 질병 목록")
 
         if st.session_state.my_conditions:
-
             registered = conditions[
                 conditions["질병명"].isin(
                     st.session_state.my_conditions
@@ -758,13 +569,9 @@ def home_page():
             ]
 
             if not registered.empty:
-
                 st.dataframe(
                     registered[
-                        [
-                            "질병명",
-                            "분류",
-                        ]
+                        ["질병명", "분류"]
                     ],
                     hide_index=True,
                     use_container_width=True,
@@ -777,7 +584,6 @@ def home_page():
             ]
 
             if unknown:
-
                 st.caption(
                     "직접 입력한 질환·증상: "
                     + ", ".join(unknown)
@@ -795,9 +601,7 @@ def home_page():
                 "선택 항목 삭제",
                 key="home_dis_remove_btn",
             ):
-
                 if remove_names:
-
                     update_home_record(
                         "conditions",
                         [
@@ -806,9 +610,7 @@ def home_page():
                             if name not in remove_names
                         ],
                     )
-
                 else:
-
                     st.warning(
                         "삭제할 항목을 선택해 주세요."
                     )
@@ -817,14 +619,10 @@ def home_page():
                 "전체 삭제",
                 key="home_dis_clear_btn",
             ):
-
                 update_home_record(
-                    "conditions",
-                    [],
+                    "conditions", []
                 )
-
         else:
-
             st.info(
                 "아직 등록한 질병·증상이 없습니다."
             )
@@ -839,9 +637,9 @@ def home_page():
         )
 
 
-# ==================================================
-# 8. 사이드바 페이지 연결
-# ==================================================
+# ================================================
+# 사이드바 페이지
+# ================================================
 
 pages = [
     st.Page(
@@ -850,37 +648,31 @@ pages = [
         icon="💊",
         default=True,
     ),
-
     st.Page(
         "pages/0_나의_건강_기록.py",
         title="나의 건강 기록",
         icon="🩺",
     ),
-
     st.Page(
         "pages/1_성분_사전.py",
         title="성분 사전",
         icon="📘",
     ),
-
     st.Page(
         "pages/2_약_종류.py",
         title="약 종류",
         icon="🗂️",
     ),
-
     st.Page(
         "pages/3_근처_병원_약국.py",
         title="근처 병원·약국",
         icon="📍",
     ),
-
     st.Page(
         "pages/4_동물_건강.py",
         title="동물 건강",
         icon="🐾",
     ),
-
     st.Page(
         "pages/5_증상_AI_상담.py",
         title="증상 AI 상담",
